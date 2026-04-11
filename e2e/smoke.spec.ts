@@ -77,10 +77,10 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
     const touchCtrl = page.getByTestId("touch-controls");
     await expect(touchCtrl).toBeAttached();
 
-    // Slider controls should be present
+    // Controls should be present
     await expect(page.getByLabel("Steering")).toBeAttached();
-    await expect(page.getByLabel("Speed")).toBeAttached();
-    await expect(page.getByLabel("Go")).toBeAttached();
+    await expect(page.getByLabel("Forward")).toBeAttached();
+    await expect(page.getByLabel("Reverse")).toBeAttached();
 
     await context.close();
   });

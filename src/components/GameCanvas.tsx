@@ -101,7 +101,7 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
       if (keys.has("ArrowLeft") || keys.has("a")) { steering -= 1; hasKeyboard = true; }
       if (keys.has("ArrowRight") || keys.has("d")) { steering += 1; hasKeyboard = true; }
 
-      // Touch (slider values + go button)
+      // Touch (steering slider + forward/reverse buttons)
       const ti = touchInputRef.current;
       if (!hasKeyboard && ti.go) {
         throttle = ti.throttle;

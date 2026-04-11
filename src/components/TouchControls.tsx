@@ -8,14 +8,13 @@ interface TouchControlsProps {
 /**
  * Mobile touch controls:
  * - Steering slider (left ↔ right)
- * - Speed slider (reverse ↔ forward)
- * - GO button (hold to drive)
+ * - Forward button (hold to drive forward)
+ * - Reverse button (hold to drive in reverse)
  * - Reset button
  */
 export default function TouchControls({ touchInputRef }: TouchControlsProps) {
   const [steering, setSteering] = useState(0);
-  const [speed, setSpeed] = useState(0);
-  const [goActive, setGoActive] = useState(false);
+  const [activeDir, setActiveDir] = useState<"fwd" | "rev" | null>(null);
 
   const updateRef = (patch: Partial<TouchInput>) => {
     const cur = touchInputRef.current;
@@ -27,19 +26,14 @@ export default function TouchControls({ touchInputRef }: TouchControlsProps) {
     updateRef({ steering: val });
   };
 
-  const handleSpeedChange = (val: number) => {
-    setSpeed(val);
-    updateRef({ throttle: val });
+  const handleDriveDown = (dir: "fwd" | "rev") => {
+    setActiveDir(dir);
+    updateRef({ throttle: dir === "fwd" ? 1 : -1, go: true });
   };
 
-  const handleGoDown = () => {
-    setGoActive(true);
-    updateRef({ go: true });
-  };
-
-  const handleGoUp = () => {
-    setGoActive(false);
-    updateRef({ go: false });
+  const handleDriveUp = () => {
+    setActiveDir(null);
+    updateRef({ throttle: 0, go: false });
   };
 
   const sliderTrack: React.CSSProperties = {
@@ -51,6 +45,32 @@ export default function TouchControls({ touchInputRef }: TouchControlsProps) {
     borderRadius: 4,
     outline: "none",
     cursor: "pointer",
+  };
+
+  const driveButton = (dir: "fwd" | "rev"): React.CSSProperties => {
+    const isActive = activeDir === dir;
+    const isFwd = dir === "fwd";
+    return {
+      flex: 1,
+      maxWidth: 200,
+      padding: "14px 0",
+      borderRadius: 12,
+      border: "none",
+      background: isActive
+        ? (isFwd ? "#16a34a" : "#b45309")
+        : (isFwd ? "#166534" : "#78350f"),
+      color: isFwd ? "#86efac" : "#fde68a",
+      fontSize: 18,
+      fontWeight: "bold",
+      userSelect: "none",
+      WebkitUserSelect: "none",
+      touchAction: "none",
+      cursor: "pointer",
+      boxShadow: isActive
+        ? `0 0 12px ${isFwd ? "rgba(34,197,94,0.6)" : "rgba(180,83,9,0.6)"}`
+        : `0 2px 8px ${isFwd ? "rgba(22,101,52,0.4)" : "rgba(120,53,15,0.4)"}`,
+      transition: "background 0.1s, box-shadow 0.1s",
+    };
   };
 
   return (
@@ -85,58 +105,30 @@ export default function TouchControls({ touchInputRef }: TouchControlsProps) {
         <span style={{ fontSize: 18, minWidth: 24, textAlign: "center" }}>▶</span>
       </div>
 
-      {/* Speed slider */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 14, minWidth: 24, textAlign: "center", color: "#fde68a" }}>REV</span>
-        <div style={{ flex: 1 }}>
-          <label
-            style={{ fontSize: 11, color: "#9ca3af", display: "block", marginBottom: 2 }}
-          >
-            Speed ({speed > 0 ? "fwd" : speed < 0 ? "rev" : "stop"})
-          </label>
-          <input
-            type="range"
-            aria-label="Speed"
-            min={-100}
-            max={100}
-            value={speed * 100}
-            onChange={(e) => handleSpeedChange(Number(e.target.value) / 100)}
-            style={sliderTrack}
-          />
-        </div>
-        <span style={{ fontSize: 14, minWidth: 24, textAlign: "center", color: "#86efac" }}>FWD</span>
-      </div>
-
-      {/* GO + Reset row */}
+      {/* Forward / Reverse / Reset row */}
       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 4 }}>
         <button
-          aria-label="Go"
-          data-testid="touch-go"
-          onPointerDown={handleGoDown}
-          onPointerUp={handleGoUp}
-          onPointerCancel={handleGoUp}
-          onPointerLeave={handleGoUp}
-          style={{
-            flex: 1,
-            maxWidth: 200,
-            padding: "14px 0",
-            borderRadius: 12,
-            border: "none",
-            background: goActive ? "#16a34a" : "#166534",
-            color: "#86efac",
-            fontSize: 20,
-            fontWeight: "bold",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            touchAction: "none",
-            cursor: "pointer",
-            boxShadow: goActive
-              ? "0 0 12px rgba(34, 197, 94, 0.6)"
-              : "0 2px 8px rgba(22, 101, 52, 0.4)",
-            transition: "background 0.1s, box-shadow 0.1s",
-          }}
+          aria-label="Reverse"
+          data-testid="touch-reverse"
+          onPointerDown={() => handleDriveDown("rev")}
+          onPointerUp={handleDriveUp}
+          onPointerCancel={handleDriveUp}
+          onPointerLeave={handleDriveUp}
+          style={driveButton("rev")}
         >
-          {goActive ? "🚗 DRIVING" : "GO"}
+          {activeDir === "rev" ? "🔙 REV" : "⬅ REV"}
+        </button>
+
+        <button
+          aria-label="Forward"
+          data-testid="touch-forward"
+          onPointerDown={() => handleDriveDown("fwd")}
+          onPointerUp={handleDriveUp}
+          onPointerCancel={handleDriveUp}
+          onPointerLeave={handleDriveUp}
+          style={driveButton("fwd")}
+        >
+          {activeDir === "fwd" ? "🚗 FWD" : "➡ FWD"}
         </button>
 
         <button
