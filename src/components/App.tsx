@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import GameCanvas from "./GameCanvas";
+import type { TouchInput } from "./GameCanvas";
 import LevelSelector from "./LevelSelector";
 import Controls from "./Controls";
+import TouchControls from "./TouchControls";
 import { levels } from "../levels";
 
 export default function App() {
   const [currentLevel, setCurrentLevel] = useState(0);
+  const touchInputRef = useRef<TouchInput>({ throttle: 0, steering: 0 });
 
   return (
     <div
@@ -27,6 +30,7 @@ export default function App() {
         }}
       >
         <h1
+          data-testid="app-title"
           style={{
             margin: 0,
             fontSize: "22px",
@@ -37,6 +41,7 @@ export default function App() {
           🚗 Parallel Parking Simulator
         </h1>
         <p
+          data-testid="level-description"
           style={{
             margin: "4px 0 0",
             fontSize: "13px",
@@ -71,17 +76,23 @@ export default function App() {
         <GameCanvas
           key={currentLevel}
           level={levels[currentLevel]}
+          touchInputRef={touchInputRef}
         />
       </main>
 
+      {/* Desktop: keyboard help; Mobile: touch controls */}
       <footer
         style={{
-          padding: "10px 20px",
           background: "#1f2937",
           borderTop: "1px solid #374151",
         }}
       >
-        <Controls />
+        <div className="desktop-only" style={{ padding: "10px 20px" }}>
+          <Controls />
+        </div>
+        <div className="mobile-only">
+          <TouchControls touchInputRef={touchInputRef} />
+        </div>
       </footer>
     </div>
   );

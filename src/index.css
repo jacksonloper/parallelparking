@@ -29,3 +29,16 @@ button:hover {
 button:active {
   transform: scale(0.98);
 }
+
+/* Responsive: show/hide based on pointer capability */
+/* Devices with a fine pointer (mouse) = desktop */
+@media (pointer: fine) {
+  .mobile-only { display: none !important; }
+}
+
+/* Devices without a fine pointer (touch-only) = mobile */
+@media (pointer: coarse) {
+  .desktop-only { display: none !important; }
+}
+
+/* Fallback: if no pointer media, show both */

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import {
   createGameWorld,
   applyDrive,
@@ -9,15 +9,22 @@ import type { GameWorld } from "../physics";
 import { render } from "../renderer/renderer";
 import type { LevelDef } from "../physics";
 
+export interface TouchInput {
+  throttle: number;
+  steering: number;
+}
+
 interface GameCanvasProps {
   level: LevelDef;
+  /** Mutable ref shared with TouchControls so touch input reaches the game loop without re-renders */
+  touchInputRef: React.RefObject<TouchInput>;
 }
 
 function initWorld(level: LevelDef): GameWorld {
   return createGameWorld(level);
 }
 
-export default function GameCanvas({ level }: GameCanvasProps) {
+export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameWorldRef = useRef<GameWorld>(initWorld(level));
   const keysRef = useRef<Set<string>>(new Set());
@@ -25,13 +32,20 @@ export default function GameCanvas({ level }: GameCanvasProps) {
   const animFrameRef = useRef(0);
   const [won, setWon] = useState(false);
 
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
     wonRef.current = false;
     setWon(false);
     gameWorldRef.current = createGameWorld(level);
-  };
+  }, [level]);
 
-  // Input handling
+  // Listen for reset from touch controls
+  useEffect(() => {
+    const onReset = () => resetGame();
+    window.addEventListener("game-reset", onReset);
+    return () => window.removeEventListener("game-reset", onReset);
+  }, [resetGame]);
+
+  // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current.add(e.key);
@@ -39,9 +53,7 @@ export default function GameCanvas({ level }: GameCanvasProps) {
         e.preventDefault();
       }
       if (e.key === "r" || e.key === "R") {
-        wonRef.current = false;
-        setWon(false);
-        gameWorldRef.current = createGameWorld(level);
+        resetGame();
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -50,12 +62,13 @@ export default function GameCanvas({ level }: GameCanvasProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [level]);
+  }, [level, resetGame]);
+
+  // Game loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -70,10 +83,16 @@ export default function GameCanvas({ level }: GameCanvasProps) {
       let throttle = 0;
       let steering = 0;
 
+      // Keyboard
       if (keys.has("ArrowUp") || keys.has("w")) throttle += 1;
       if (keys.has("ArrowDown") || keys.has("s")) throttle -= 1;
       if (keys.has("ArrowLeft") || keys.has("a")) steering -= 1;
       if (keys.has("ArrowRight") || keys.has("d")) steering += 1;
+
+      // Touch (override when active)
+      const ti = touchInputRef.current;
+      if (ti.throttle !== 0) throttle = ti.throttle;
+      if (ti.steering !== 0) steering = ti.steering;
 
       applyDrive(gw.vehicle, throttle, steering);
       stepWorld(gw);
@@ -85,7 +104,7 @@ export default function GameCanvas({ level }: GameCanvasProps) {
 
       const ppm = Math.min(
         canvas.width / gw.levelDef.bounds.width,
-        canvas.height / gw.levelDef.bounds.height
+        canvas.height / gw.levelDef.bounds.height,
       );
 
       render(ctx, gw, wonRef.current, {
@@ -101,9 +120,9 @@ export default function GameCanvas({ level }: GameCanvasProps) {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
     };
-  }, []);
+  }, [touchInputRef]);
 
-  // Handle canvas resize
+  // Canvas resize
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -131,19 +150,25 @@ export default function GameCanvas({ level }: GameCanvasProps) {
   }, []);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    <div
+      data-testid="game-container"
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
       <canvas
         ref={canvasRef}
+        data-testid="game-canvas"
         style={{
           width: "100%",
           height: "100%",
           display: "block",
           borderRadius: "8px",
           border: "2px solid #374151",
+          touchAction: "none",
         }}
       />
       {won && (
         <div
+          data-testid="win-overlay"
           style={{
             position: "absolute",
             top: "50%",
@@ -165,6 +190,8 @@ export default function GameCanvas({ level }: GameCanvasProps) {
       )}
       <button
         onClick={resetGame}
+        data-testid="reset-button"
+        className="desktop-only"
         style={{
           position: "absolute",
           top: "8px",
