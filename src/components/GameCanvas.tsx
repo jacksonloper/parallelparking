@@ -38,6 +38,11 @@ export default function GameCanvas({ level }: GameCanvasProps) {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
         e.preventDefault();
       }
+      if (e.key === "r" || e.key === "R") {
+        wonRef.current = false;
+        setWon(false);
+        gameWorldRef.current = createGameWorld(level);
+      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       keysRef.current.delete(e.key);
@@ -50,9 +55,7 @@ export default function GameCanvas({ level }: GameCanvasProps) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, []);
-
-  // Game loop
+  }, [level]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
