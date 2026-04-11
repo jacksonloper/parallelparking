@@ -79,8 +79,6 @@ export default function TouchControls({ touchInputRef }: TouchControlsProps) {
             max={100}
             value={steering * 100}
             onChange={(e) => handleSteeringChange(Number(e.target.value) / 100)}
-            onTouchEnd={() => handleSteeringChange(0)}
-            onMouseUp={() => handleSteeringChange(0)}
             style={sliderTrack}
           />
         </div>

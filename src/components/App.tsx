@@ -54,7 +54,7 @@ export default function App() {
 
       <nav
         style={{
-          padding: "10px 20px",
+          padding: "6px 12px",
           background: "#1f2937",
           borderBottom: "1px solid #374151",
         }}
