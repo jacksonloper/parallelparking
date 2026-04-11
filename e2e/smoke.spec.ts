@@ -63,7 +63,7 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
     expect(hasWebGL).toBe(true);
   });
 
-  test("touch controls show sliders on mobile viewport", async ({
+  test("touch controls show on mobile viewport", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -78,7 +78,7 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
     await expect(touchCtrl).toBeAttached();
 
     // Controls should be present
-    await expect(page.getByLabel("Steering")).toBeAttached();
+    await expect(page.getByTestId("touch-steer-zone")).toBeAttached();
     await expect(page.getByLabel("Forward")).toBeAttached();
     await expect(page.getByLabel("Reverse")).toBeAttached();
 
