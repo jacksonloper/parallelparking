@@ -8,7 +8,7 @@ import { levels } from "../levels";
 
 export default function App() {
   const [currentLevel, setCurrentLevel] = useState(0);
-  const touchInputRef = useRef<TouchInput>({ throttle: 0, steering: 0 });
+  const touchInputRef = useRef<TouchInput>({ throttle: 0, steering: 0, go: false });
 
   return (
     <div

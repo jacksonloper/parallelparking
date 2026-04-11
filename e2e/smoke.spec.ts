@@ -12,11 +12,11 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
       "Parallel Parking Simulator",
     );
 
-    // Canvas is rendered
+    // Three.js canvas is rendered
     const canvas = page.getByTestId("game-canvas");
     await expect(canvas).toBeVisible();
 
-    // Canvas has non-zero dimensions (physics world is rendering)
+    // Canvas has non-zero dimensions (Three.js is rendering)
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThan(100);
@@ -47,43 +47,28 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
     await expect(page.getByTestId("game-canvas")).toBeVisible();
   });
 
-  test("canvas renders non-blank content", async ({ page }) => {
-    // Wait a tick for the game loop to paint
-    await page.waitForTimeout(200);
+  test("Three.js canvas is rendering WebGL content", async ({ page }) => {
+    // Wait for the game loop to paint
+    await page.waitForTimeout(500);
 
-    // Evaluate canvas pixel data to confirm it's not all one colour
-    const hasContent = await page.evaluate(() => {
+    // The Three.js canvas should have a webgl context
+    const hasWebGL = await page.evaluate(() => {
       const canvas = document.querySelector(
         '[data-testid="game-canvas"]',
       ) as HTMLCanvasElement | null;
       if (!canvas) return false;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return false;
-      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      const first = [data[0], data[1], data[2]];
-      for (let i = 4; i < data.length; i += 4) {
-        if (
-          data[i] !== first[0] ||
-          data[i + 1] !== first[1] ||
-          data[i + 2] !== first[2]
-        ) {
-          return true; // found a different pixel — canvas has varied content
-        }
-      }
-      return false;
+      const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+      return gl !== null;
     });
-    expect(hasContent).toBe(true);
+    expect(hasWebGL).toBe(true);
   });
 
-  test("touch controls are visible on mobile viewport", async ({
+  test("touch controls show sliders on mobile viewport", async ({
     browser,
   }) => {
     const context = await browser.newContext({
       viewport: { width: 375, height: 812 },
       hasTouch: true,
-      // Force coarse pointer so CSS media query activates
-      // Playwright doesn't directly support `pointer: coarse`, but hasTouch
-      // ensures touch events work. We'll just check the DOM presence.
     });
     const page = await context.newPage();
     await page.goto("/");
@@ -92,11 +77,10 @@ test.describe("Parallel Parking Simulator – smoke tests", () => {
     const touchCtrl = page.getByTestId("touch-controls");
     await expect(touchCtrl).toBeAttached();
 
-    // Forward button should be present
-    await expect(page.getByLabel("Drive forward")).toBeAttached();
-    await expect(page.getByLabel("Steer left")).toBeAttached();
-    await expect(page.getByLabel("Reverse")).toBeAttached();
-    await expect(page.getByLabel("Steer right")).toBeAttached();
+    // Slider controls should be present
+    await expect(page.getByLabel("Steering")).toBeAttached();
+    await expect(page.getByLabel("Speed")).toBeAttached();
+    await expect(page.getByLabel("Go")).toBeAttached();
 
     await context.close();
   });

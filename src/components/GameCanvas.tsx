@@ -6,12 +6,13 @@ import {
   checkWin,
 } from "../physics";
 import type { GameWorld } from "../physics";
-import { render } from "../renderer/renderer";
+import { ThreeRenderer } from "../renderer/ThreeRenderer";
 import type { LevelDef } from "../physics";
 
 export interface TouchInput {
-  throttle: number;
-  steering: number;
+  throttle: number;   // -1 to 1 (continuous)
+  steering: number;   // -1 to 1 (continuous)
+  go: boolean;        // true while Go button is held
 }
 
 interface GameCanvasProps {
@@ -25,7 +26,8 @@ function initWorld(level: LevelDef): GameWorld {
 }
 
 export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<ThreeRenderer | null>(null);
   const gameWorldRef = useRef<GameWorld>(initWorld(level));
   const keysRef = useRef<Set<string>>(new Set());
   const wonRef = useRef(false);
@@ -35,7 +37,9 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
   const resetGame = useCallback(() => {
     wonRef.current = false;
     setWon(false);
-    gameWorldRef.current = createGameWorld(level);
+    const gw = createGameWorld(level);
+    gameWorldRef.current = gw;
+    rendererRef.current?.setupScene(gw);
   }, [level]);
 
   // Listen for reset from touch controls
@@ -68,13 +72,20 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
     };
   }, [level, resetGame]);
 
-  // Game loop
+  // Three.js setup + game loop
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const threeRenderer = new ThreeRenderer(container);
+    rendererRef.current = threeRenderer;
+    threeRenderer.setupScene(gameWorldRef.current);
+
+    // Resize handling
+    const resizeObserver = new ResizeObserver(() => {
+      threeRenderer.resize(container.clientWidth, container.clientHeight);
+    });
+    resizeObserver.observe(container);
 
     const loop = () => {
       const gw = gameWorldRef.current;
@@ -82,17 +93,20 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
       const keys = keysRef.current;
       let throttle = 0;
       let steering = 0;
+      let hasKeyboard = false;
 
       // Keyboard
-      if (keys.has("ArrowUp") || keys.has("w")) throttle += 1;
-      if (keys.has("ArrowDown") || keys.has("s")) throttle -= 1;
-      if (keys.has("ArrowLeft") || keys.has("a")) steering -= 1;
-      if (keys.has("ArrowRight") || keys.has("d")) steering += 1;
+      if (keys.has("ArrowUp") || keys.has("w")) { throttle += 1; hasKeyboard = true; }
+      if (keys.has("ArrowDown") || keys.has("s")) { throttle -= 1; hasKeyboard = true; }
+      if (keys.has("ArrowLeft") || keys.has("a")) { steering -= 1; hasKeyboard = true; }
+      if (keys.has("ArrowRight") || keys.has("d")) { steering += 1; hasKeyboard = true; }
 
-      // Touch (override when active)
+      // Touch (slider values + go button)
       const ti = touchInputRef.current;
-      if (ti.throttle !== 0) throttle = ti.throttle;
-      if (ti.steering !== 0) steering = ti.steering;
+      if (!hasKeyboard && ti.go) {
+        throttle = ti.throttle;
+        steering = ti.steering;
+      }
 
       applyDrive(gw.vehicle, throttle, steering);
       stepWorld(gw);
@@ -102,15 +116,7 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
         setWon(true);
       }
 
-      const ppm = Math.min(
-        canvas.width / gw.levelDef.bounds.width,
-        canvas.height / gw.levelDef.bounds.height,
-      );
-
-      render(ctx, gw, wonRef.current, {
-        showGrid: true,
-        pixelsPerMeter: ppm,
-      });
+      threeRenderer.render(gw, wonRef.current);
 
       animFrameRef.current = requestAnimationFrame(loop);
     };
@@ -119,51 +125,25 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
+      resizeObserver.disconnect();
+      threeRenderer.dispose();
+      rendererRef.current = null;
     };
-  }, [touchInputRef]);
-
-  // Canvas resize
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-      }
-    });
-
-    resizeObserver.observe(canvas);
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, []);
+  }, [touchInputRef, level]);
 
   return (
     <div
       data-testid="game-container"
       style={{ position: "relative", width: "100%", height: "100%" }}
     >
-      <canvas
-        ref={canvasRef}
-        data-testid="game-canvas"
+      <div
+        ref={containerRef}
         style={{
           width: "100%",
           height: "100%",
-          display: "block",
-          borderRadius: "8px",
           border: "2px solid #374151",
-          touchAction: "none",
+          borderRadius: "8px",
+          overflow: "hidden",
         }}
       />
       {won && (

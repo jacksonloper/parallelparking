@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { TouchInput } from "./GameCanvas";
 
 interface TouchControlsProps {
@@ -5,63 +6,51 @@ interface TouchControlsProps {
 }
 
 /**
- * On-screen touch controls for mobile devices.
- * Left side: steering (left / right)
- * Right side: throttle (forward / reverse)
- * Center: reset
+ * Mobile touch controls:
+ * - Steering slider (left ↔ right)
+ * - Speed slider (reverse ↔ forward)
+ * - GO button (hold to drive)
+ * - Reset button
  */
 export default function TouchControls({ touchInputRef }: TouchControlsProps) {
-  const update = (patch: Partial<TouchInput>) => {
+  const [steering, setSteering] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [goActive, setGoActive] = useState(false);
+
+  const updateRef = (patch: Partial<TouchInput>) => {
     const cur = touchInputRef.current;
     touchInputRef.current = { ...cur, ...patch };
   };
 
-  const btnBase: React.CSSProperties = {
-    width: 62,
-    height: 62,
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    userSelect: "none",
-    WebkitUserSelect: "none",
-    touchAction: "none",
+  const handleSteeringChange = (val: number) => {
+    setSteering(val);
+    updateRef({ steering: val });
+  };
+
+  const handleSpeedChange = (val: number) => {
+    setSpeed(val);
+    updateRef({ throttle: val });
+  };
+
+  const handleGoDown = () => {
+    setGoActive(true);
+    updateRef({ go: true });
+  };
+
+  const handleGoUp = () => {
+    setGoActive(false);
+    updateRef({ go: false });
+  };
+
+  const sliderTrack: React.CSSProperties = {
+    width: "100%",
+    height: 8,
+    appearance: "none",
+    WebkitAppearance: "none",
+    background: "#374151",
+    borderRadius: 4,
+    outline: "none",
     cursor: "pointer",
-    fontWeight: "bold",
-    fontSize: 24,
-    border: "none",
-  };
-
-  const steerBtn: React.CSSProperties = {
-    ...btnBase,
-    background: "#1e40af",
-    color: "#93c5fd",
-    boxShadow: "0 2px 8px rgba(30,64,175,0.4)",
-  };
-
-  const fwdBtn: React.CSSProperties = {
-    ...btnBase,
-    background: "#166534",
-    color: "#86efac",
-    boxShadow: "0 2px 8px rgba(22,101,52,0.4)",
-  };
-
-  const revBtn: React.CSSProperties = {
-    ...btnBase,
-    background: "#92400e",
-    color: "#fde68a",
-    boxShadow: "0 2px 8px rgba(146,64,14,0.4)",
-  };
-
-  const resetBtn: React.CSSProperties = {
-    ...btnBase,
-    width: 46,
-    height: 46,
-    borderRadius: 8,
-    background: "#7f1d1d",
-    color: "#fca5a5",
-    fontSize: 20,
-    boxShadow: "0 2px 8px rgba(127,29,29,0.4)",
   };
 
   return (
@@ -69,67 +58,113 @@ export default function TouchControls({ touchInputRef }: TouchControlsProps) {
       data-testid="touch-controls"
       style={{
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "6px 12px",
+        flexDirection: "column",
         gap: 8,
+        padding: "8px 16px 12px",
       }}
     >
-      {/* Steering */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button
-          aria-label="Steer left"
-          style={steerBtn}
-          onPointerDown={() => update({ steering: -1 })}
-          onPointerUp={() => update({ steering: 0 })}
-          onPointerCancel={() => update({ steering: 0 })}
-          onPointerLeave={() => update({ steering: 0 })}
-        >
-          ◀
-        </button>
-        <button
-          aria-label="Steer right"
-          style={steerBtn}
-          onPointerDown={() => update({ steering: 1 })}
-          onPointerUp={() => update({ steering: 0 })}
-          onPointerCancel={() => update({ steering: 0 })}
-          onPointerLeave={() => update({ steering: 0 })}
-        >
-          ▶
-        </button>
+      {/* Steering slider */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18, minWidth: 24, textAlign: "center" }}>◀</span>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{ fontSize: 11, color: "#9ca3af", display: "block", marginBottom: 2 }}
+          >
+            Steering ({steering > 0 ? "R" : steering < 0 ? "L" : "center"})
+          </label>
+          <input
+            type="range"
+            aria-label="Steering"
+            min={-100}
+            max={100}
+            value={steering * 100}
+            onChange={(e) => handleSteeringChange(Number(e.target.value) / 100)}
+            onTouchEnd={() => handleSteeringChange(0)}
+            onMouseUp={() => handleSteeringChange(0)}
+            style={sliderTrack}
+          />
+        </div>
+        <span style={{ fontSize: 18, minWidth: 24, textAlign: "center" }}>▶</span>
       </div>
 
-      {/* Reset */}
-      <button
-        aria-label="Reset level"
-        data-testid="touch-reset"
-        style={resetBtn}
-        onClick={() => window.dispatchEvent(new CustomEvent("game-reset"))}
-      >
-        ↻
-      </button>
+      {/* Speed slider */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 14, minWidth: 24, textAlign: "center", color: "#fde68a" }}>REV</span>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{ fontSize: 11, color: "#9ca3af", display: "block", marginBottom: 2 }}
+          >
+            Speed ({speed > 0 ? "fwd" : speed < 0 ? "rev" : "stop"})
+          </label>
+          <input
+            type="range"
+            aria-label="Speed"
+            min={-100}
+            max={100}
+            value={speed * 100}
+            onChange={(e) => handleSpeedChange(Number(e.target.value) / 100)}
+            style={sliderTrack}
+          />
+        </div>
+        <span style={{ fontSize: 14, minWidth: 24, textAlign: "center", color: "#86efac" }}>FWD</span>
+      </div>
 
-      {/* Throttle */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      {/* GO + Reset row */}
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 4 }}>
         <button
-          aria-label="Reverse"
-          style={revBtn}
-          onPointerDown={() => update({ throttle: -1 })}
-          onPointerUp={() => update({ throttle: 0 })}
-          onPointerCancel={() => update({ throttle: 0 })}
-          onPointerLeave={() => update({ throttle: 0 })}
+          aria-label="Go"
+          data-testid="touch-go"
+          onPointerDown={handleGoDown}
+          onPointerUp={handleGoUp}
+          onPointerCancel={handleGoUp}
+          onPointerLeave={handleGoUp}
+          style={{
+            flex: 1,
+            maxWidth: 200,
+            padding: "14px 0",
+            borderRadius: 12,
+            border: "none",
+            background: goActive ? "#16a34a" : "#166534",
+            color: "#86efac",
+            fontSize: 20,
+            fontWeight: "bold",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            touchAction: "none",
+            cursor: "pointer",
+            boxShadow: goActive
+              ? "0 0 12px rgba(34, 197, 94, 0.6)"
+              : "0 2px 8px rgba(22, 101, 52, 0.4)",
+            transition: "background 0.1s, box-shadow 0.1s",
+          }}
         >
-          ▼
+          {goActive ? "🚗 DRIVING" : "GO"}
         </button>
+
         <button
-          aria-label="Drive forward"
-          style={fwdBtn}
-          onPointerDown={() => update({ throttle: 1 })}
-          onPointerUp={() => update({ throttle: 0 })}
-          onPointerCancel={() => update({ throttle: 0 })}
-          onPointerLeave={() => update({ throttle: 0 })}
+          aria-label="Reset level"
+          data-testid="touch-reset"
+          onClick={() => window.dispatchEvent(new CustomEvent("game-reset"))}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 12,
+            border: "none",
+            background: "#7f1d1d",
+            color: "#fca5a5",
+            fontSize: 22,
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            touchAction: "none",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(127,29,29,0.4)",
+          }}
         >
-          ▲
+          ↻
         </button>
       </div>
     </div>
