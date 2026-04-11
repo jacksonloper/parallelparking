@@ -15,7 +15,7 @@ export default function App() {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100dvh",
         background: "#111827",
         color: "#f9fafb",
         fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
@@ -27,6 +27,7 @@ export default function App() {
           background: "#1f2937",
           borderBottom: "1px solid #374151",
           textAlign: "center",
+          flexShrink: 0,
         }}
       >
         <h1
@@ -57,6 +58,7 @@ export default function App() {
           padding: "6px 12px",
           background: "#1f2937",
           borderBottom: "1px solid #374151",
+          flexShrink: 0,
         }}
       >
         <LevelSelector
@@ -85,6 +87,7 @@ export default function App() {
         style={{
           background: "#1f2937",
           borderTop: "1px solid #374151",
+          flexShrink: 0,
         }}
       >
         <div className="desktop-only" style={{ padding: "10px 20px" }}>
