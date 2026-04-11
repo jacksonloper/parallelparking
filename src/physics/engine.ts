@@ -269,7 +269,7 @@ export function applyDrive(
   } else {
     // Curved driving
     const turningRadius = CAR_CONFIG.wheelbase / Math.tan(steerAngle);
-    const angularVel = speed / turningRadius;
+    const angularVel = -speed / turningRadius;
 
     const vx = speed * Math.cos(angle);
     const vy = speed * Math.sin(angle);
