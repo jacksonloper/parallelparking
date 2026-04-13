@@ -279,9 +279,10 @@ export class ThreeRenderer {
   render(gameWorld: GameWorld, won: boolean): void {
     const car = gameWorld.vehicle.car;
     const carPos = car.body.getPosition();
+    const carAngle = car.body.getAngle();
 
-    // Update camera to follow car
-    this.updateCamera(carPos.x, carPos.y);
+    // Update camera to follow car and keep car facing up
+    this.updateCamera(carPos.x, carPos.y, carAngle);
 
     // Update goal appearance
     if (this.goalMesh) {
@@ -331,7 +332,7 @@ export class ThreeRenderer {
     this.renderer.render(this.hudScene, this.hudCamera);
   }
 
-  private updateCamera(cx: number, cy: number): void {
+  private updateCamera(cx: number, cy: number, carAngle: number): void {
     const el = this.renderer.domElement;
     const aspect = el.clientWidth / el.clientHeight;
     const viewH = this.BASE_VIEW / this.zoom;
@@ -342,6 +343,11 @@ export class ThreeRenderer {
     this.camera.top = viewH / 2;
     this.camera.bottom = -viewH / 2;
     this.camera.position.set(cx, cy, 10);
+    // Rotate so the car's forward direction always points toward the top of the screen.
+    // Screen-up in world space = (-sin(rotation.z), cos(rotation.z)).
+    // We want that to equal car forward = (cos(carAngle), sin(carAngle)).
+    // Solving: rotation.z = carAngle - π/2
+    this.camera.rotation.z = carAngle - Math.PI / 2;
     this.camera.updateProjectionMatrix();
   }
 

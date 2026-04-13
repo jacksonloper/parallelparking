@@ -225,13 +225,43 @@ export function createGameWorld(level: LevelDef): GameWorld {
     trailers,
   };
 
-  return {
+  const gameWorld: GameWorld = {
     world,
     vehicle,
     obstacles,
     goalRegion: level.goal,
     levelDef: level,
+    crashed: false,
   };
+
+  // Crash detection: if car or trailer hits an immovable/wall body at speed, flag a crash
+  const CRASH_SPEED_THRESHOLD = 0.5; // m/s
+  world.on("begin-contact", (contact) => {
+    const bodyA = contact.getFixtureA().getBody();
+    const bodyB = contact.getFixtureB().getBody();
+
+    const udA = bodyA.getUserData() as { type: string } | null;
+    const udB = bodyB.getUserData() as { type: string } | null;
+
+    const isVehicle = (ud: { type: string } | null) =>
+      ud?.type === "car" || ud?.type === "trailer";
+    const isImmovable = (ud: { type: string } | null) =>
+      ud?.type === "immovable" || ud?.type === "wall";
+
+    if (
+      (isVehicle(udA) && isImmovable(udB)) ||
+      (isVehicle(udB) && isImmovable(udA))
+    ) {
+      const vehicleBody = isVehicle(udA) ? bodyA : bodyB;
+      const vel = vehicleBody.getLinearVelocity();
+      const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+      if (speed >= CRASH_SPEED_THRESHOLD) {
+        gameWorld.crashed = true;
+      }
+    }
+  });
+
+  return gameWorld;
 }
 
 /**

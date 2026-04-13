@@ -68,4 +68,6 @@ export interface GameWorld {
   obstacles: Body[];
   goalRegion: GoalRegion;
   levelDef: LevelDef;
+  /** Set to true by the contact listener when the car/trailer hits an immovable object */
+  crashed: boolean;
 }

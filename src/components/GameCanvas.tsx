@@ -111,6 +111,11 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
       applyDrive(gw.vehicle, throttle, steering);
       stepWorld(gw);
 
+      if (gw.crashed && !wonRef.current) {
+        resetGame();
+        return;
+      }
+
       if (!wonRef.current && checkWin(gw)) {
         wonRef.current = true;
         setWon(true);
@@ -129,7 +134,7 @@ export default function GameCanvas({ level, touchInputRef }: GameCanvasProps) {
       threeRenderer.dispose();
       rendererRef.current = null;
     };
-  }, [touchInputRef, level]);
+  }, [touchInputRef, level, resetGame]);
 
   return (
     <div
